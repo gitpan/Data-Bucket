@@ -1,0 +1,11 @@
+MANIFEST
+README
+LICENSE
+Todo
+Changes
+Makefile.PL
+lib/Data/Bucket.pm
+t/001_load.t
+t/002_build.t
+t/003_access.t
+META.yml                                 Module meta-data (added by MakeMaker)
