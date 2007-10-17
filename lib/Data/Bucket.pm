@@ -4,7 +4,7 @@ use strict;
 BEGIN {
     use Exporter ();
     use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
-    $VERSION     = '0.03';
+    $VERSION     = '0.05';
     @ISA         = qw(Exporter);
     #Give a hoot don't pollute, do not export more than needed by default
     @EXPORT      = qw();
@@ -37,8 +37,8 @@ Data::Bucket - indexed data store (bucket hashing)
   open I, $file_with_queries or die $! ;
 
   for my $line (<I>) {
-    my $search_candidates = $bucket->based_on($line);
-    my @score = sort map { fuzzy_match($line, $_) } @{$search_candidates} ;
+    my @search_candidates = $bucket->based_on($line);
+    my @score = sort map { fuzzy_match($line, $_) } @search_candidates ;
   }
 
 
@@ -59,7 +59,7 @@ Data::Bucket - indexed data store (bucket hashing)
 
  for my $search ( qw(oh the so draw apple) ) {
     my @b = $bucket->based_on($search);
-    # do something which each bucket and $search
+    # do something which each value in @bucket and $search
  }
 
 
@@ -178,7 +178,7 @@ sub based_on
     my $index = $self->compute_record_index($data);
     my @index = ref $index eq 'ARRAY' ? @$index : ($index) ;
     for (@index) {
-	push @ret, $self->{bucket}{$_};
+	push @ret, @{ $self->{bucket}{$_} } ;
     }
     @ret;
 }

@@ -15,7 +15,7 @@ isa_ok ($bucket, 'Data::Bucket');
 use Data::Dumper;
 
 for my $search ( qw(randal larry damian) ) {
-    warn "bucket for $search: " . Dumper $bucket->based_on($search);
+    warn "bucket for $search: " . Dumper [ $bucket->based_on($search) ] ;
 }
 
 

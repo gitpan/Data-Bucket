@@ -4,3 +4,8 @@ Revision history for Perl module Data::Bucket
     - original version; created by ExtUtils::ModuleMaker 0.49
 
 
+0.05 Wed Oct 17 11:49:27 EDT 2007
+ - Major change in API. based_on() always returns an array of data, even if
+   multiple buckets are computed... no need to force the user to splice 
+   together the buckets
+
