@@ -4,7 +4,7 @@ use strict;
 BEGIN {
     use Exporter ();
     use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
-    $VERSION     = '0.02';
+    $VERSION     = '0.03';
     @ISA         = qw(Exporter);
     #Give a hoot don't pollute, do not export more than needed by default
     @EXPORT      = qw();
@@ -23,6 +23,8 @@ Data::Bucket - indexed data store (bucket hashing)
 
   # default storage scheme stores things based on first character of data
   # we overwrite it in our sub-class
+  # If we return an array-ref, then the data item is stored in each 
+  # bucket as opposed to a single.
   sub compute_record_index {
     my ($self, $data) = @_;
     substr(0, 2, $data); 
@@ -40,6 +42,27 @@ Data::Bucket - indexed data store (bucket hashing)
   }
 
 
+=head2 An example in which a single datum is dumped to multiple buckets
+
+ sub compute_record_index {
+    my ($self, $data) = @_;
+
+    return undef unless $data;
+
+    warn "<data>$data</data>";
+    my @words = split /\s+/, $data ;
+    my $min = min($#words, 1);
+    my @index = map { substr($_, 0, 1) } @words[0..$min];
+    \@index;
+ } 
+
+
+ for my $search ( qw(oh the so draw apple) ) {
+    my @b = $bucket->based_on($search);
+    # do something which each bucket and $search
+ }
+
+
 =head1 DESCRIPTION
 
 Oftentimes you have one file that is a lookup file and another file that
@@ -53,7 +76,8 @@ will be exactly the same, then you can partition the lookup file into
 members of each bucket). 
 
 While this is rather simple to hand-code, I desired an API for this so that
-my code was more DWIS than DWIM.
+my code was more DWIS than DWIM. And also so that the bucket routine could
+be swapped in and out easily.
 
 =head2 RELATED WORK
 
@@ -75,7 +99,15 @@ and it again uses the C<compute_record_index()> function to find the right
 bucket and return it to you.
 
 
+If C<compute_record_index()> returns an array ref, then the data is
+stored in a bucket for each member of the array ref. Likewise, the call
+to C<< $bucket->based_on >> will return an array ref if multiple buckets
+are computed for the data.
+
+
+
 =head1 METHODS
+
 =head2 index
 
  Usage     : my $bucket = Data::Bucket->index(data => strings, %other);
@@ -115,7 +147,11 @@ sub bucket_hash
 
     for my $data (@{$self->{data}}) {
 	my $index = $self->compute_record_index($data);
-	push @{ $self->{bucket}{$index} } , $data ;
+
+	my @index = ref $index eq 'ARRAY' ? @$index : ($index) ;
+	for (@index) {
+	    push @{ $self->{bucket}{$_} } , $data ;
+	}
     }
 
     return $self;
@@ -124,7 +160,9 @@ sub bucket_hash
 =head2 based_on
 
  Usage     : $bucket->based_on($input_data);
- Purpose   : Return the bucket of data to search relevant to your input data
+ Purpose   : Return the bucket of data to search relevant to your input data.
+   NOTE: it returns either a scalar or an array based on whehter
+         compute_record_index returns a scalar or array ref
  Returns   : an array reference
  Argument  : the input data, which will find a bucket 
   via compute_record_index
@@ -135,8 +173,14 @@ sub based_on
 {
     my ($self, $data) = @_;
 
+    my @ret;
+
     my $index = $self->compute_record_index($data);
-    $self->{bucket}{$index}
+    my @index = ref $index eq 'ARRAY' ? @$index : ($index) ;
+    for (@index) {
+	push @ret, $self->{bucket}{$_};
+    }
+    @ret;
 }
 
 
@@ -144,7 +188,8 @@ sub based_on
 
  Usage     : Internal use by index_data()
  Purpose   : Compute the index for a particular record. Subclassing this 
-    method can change the indexing
+    method can change the indexing.
+    NOTE: you may return either a scalar or an array ref.
  Returns   : Nothing
  Argument  : a data item
 
@@ -174,7 +219,7 @@ sub compute_record_index
 
 =head1 BUGS
 
-
+Bugs? Are you kidding?!
 
 =head1 SUPPORT
 
@@ -184,7 +229,7 @@ sub compute_record_index
 
     Terrence M. Brannon
     CPAN ID: TBONE
-    metaperl.com Computation
+    metaperl computation is about meta-computing in perl
     tbone@cpan.org
     http://www.metaperl.com
 
