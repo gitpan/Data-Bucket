@@ -4,7 +4,7 @@ use strict;
 BEGIN {
     use Exporter ();
     use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
-    $VERSION     = '0.05';
+    $VERSION     = '0.07';
     @ISA         = qw(Exporter);
     #Give a hoot don't pollute, do not export more than needed by default
     @EXPORT      = qw();
@@ -62,6 +62,47 @@ Data::Bucket - indexed data store (bucket hashing)
     # do something which each value in @bucket and $search
  }
 
+=head3 An example in which the lookup data differs in structure from input data
+
+Yes, there is plenty of room for re-use between the two. But for naive
+understanding, no refactoring is done.
+
+ # We compute record indices for bucketing by extracting a field from
+ # input hash reference
+ sub compute_record_index {
+    my ($self, $data) = @_;
+
+    return undef unless $data;
+
+    warn "<data compute>$data</data>";
+    my @words = split /\s+/, $data->{clean_name} ;
+    my $min = min($#words, 2);
+    my @index = map { substr($_, 0, 1) } @words[0..$min];
+    \@index;
+ } 
+
+ # We find out the proper buckets in the input data by using a plain
+ # string field
+ sub retrieve_record_index {
+    my ($self, $data) = @_;
+
+    return undef unless $data;
+
+    #warn "<data retreive>$data</data>";
+    my @words = split /\s+/, $data ;
+    my $min = min($#words, 2);
+    my @index =  map { substr($_, 0, 1) } @words[0..$min];
+
+    if ($data =~ /01LA/) {
+	warn "words", Dumper \@words;
+	warn "index", Dumper \@index;
+	for (@index) {
+	    warn "bucket($_)", Dumper($self->{bucket}{$_}) ;
+	}
+    }
+
+    \@index;
+ } 
 
 =head1 DESCRIPTION
 
@@ -173,13 +214,21 @@ sub based_on
 {
     my ($self, $data) = @_;
 
-    my @ret;
+    my @ret = ();
 
-    my $index = $self->compute_record_index($data);
-    my @index = ref $index eq 'ARRAY' ? @$index : ($index) ;
-    for (@index) {
-	push @ret, @{ $self->{bucket}{$_} } ;
+    my $index = $self->retrieve_record_index($data);
+    
+    my %index_cache;
+
+    if ($index) {
+	my @index = ref $index eq 'ARRAY' ? @$index : ($index) ;
+	for (@index) {
+	    next unless defined $self->{bucket}{$_} ;
+	    next if $index_cache{$_}++;
+	    push @ret, @{ $self->{bucket}{$_} } ;
+	}
     }
+
     @ret;
 }
 
@@ -207,6 +256,29 @@ sub compute_record_index
     my ($class, $data) = @_;
 
     substr($data, 0, 1) ;
+}
+
+=head2 retrieve_record_index
+
+ Usage     : Internal use by index_data()
+ Purpose   : Compute the index for a particular record. Subclassing this 
+    method can change the indexing.
+    NOTE: you may return either a scalar or an array ref.
+ Returns   : Nothing
+ Argument  : a data item
+
+The default function simply returns C<substr(0, 1, $data)> which is a
+naive binning of the data into 26 parts, with A, E, I, O, and U certain
+to bulge!
+
+=cut
+
+#################### subroutine header end ####################
+
+
+sub retrieve_record_index
+{
+    goto &compute_record_index;
 }
 
 
